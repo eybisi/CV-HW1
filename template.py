@@ -11,6 +11,7 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
+import collections #For counting r g b values
 
 ##########################################
 ## Do not forget to delete "return NotImplementedError"
@@ -35,13 +36,42 @@ class App(QMainWindow):
         if fileName:
             print(fileName)
             pixmap = QPixmap(fileName)
+            self.inputFile = fileName
             res = QLabel()
             res.setPixmap(pixmap)
-            left_layout = QHBoxLayout()
+            left_layout = QVBoxLayout()
             left_layout.addWidget(res)
-            self.left.setLayout(left_layout)
+            left_layout.setAlignment(res,Qt.AlignHCenter)
+            left_layout.addStretch()
+            #left_layout.setAlignment(Qt.)
             self.inputLoaded = True
+            input_b = []
+            input_img = cv2.imread(self.inputFile)
+            
 
+
+            i_b = [x[0] for y in input_img for x in y]
+            i_g = [x[1] for y in input_img for x in y]
+            i_r = [x[2] for y in input_img for x in y]
+
+            
+            b =PlotCanvas(hist=i_b,c="b")
+            g = PlotCanvas(hist=i_g,c="g")
+            r = PlotCanvas(hist=i_r,c="r")
+            left_layout.addWidget(r)
+            left_layout.addWidget(g)
+            left_layout.addWidget(b)
+
+            self.left.setLayout(left_layout)
+            """
+            #print(i_b)
+            data = np.array(i_b)
+            plt.hist(data,bins=255)
+
+            # And finally plot the cdf
+            #plt.plot(bin_edges[1:], cdf)
+            plt.show()
+            """
     def openTargetImage(self):
         print("Open Target")
         options = QFileDialog.Options()
@@ -50,13 +80,29 @@ class App(QMainWindow):
         if fileName:
             print(fileName)
             pixmap = QPixmap(fileName)
+            self.targetFile = fileName
             res = QLabel()
             res.setPixmap(pixmap)
-            left_layout = QHBoxLayout()
-            left_layout.addWidget(res)
-            self.mid.setLayout(left_layout)
+            mid_layout = QVBoxLayout()
+            mid_layout.addWidget(res)
+            mid_layout.setAlignment(res,Qt.AlignHCenter)
             self.targetLoaded = True
+            target_img = cv2.imread(self.targetFile)
 
+            t_b = [x[0] for y in target_img for x in y]
+            t_g = [x[1] for y in target_img for x in y]
+            t_r = [x[2] for y in target_img for x in y]
+
+            
+            b =PlotCanvas(hist=t_b,c="b")
+            g = PlotCanvas(hist=t_g,c="g")
+            r = PlotCanvas(hist=t_r,c="r")
+            mid_layout.addWidget(r)
+            mid_layout.addWidget(g)
+            mid_layout.addWidget(b)
+
+            self.mid.setLayout(mid_layout)
+ 
     def initUI(self):
         wid = QWidget(self)
         self.setCentralWidget(wid)
@@ -106,7 +152,6 @@ class App(QMainWindow):
         button.setMinimumSize(BUTTON_SIZE);
         bot_layout = QHBoxLayout()
         bot_layout.addWidget(button)
-
         self.bottom.setLayout(bot_layout)
 
         splitter2 = QSplitter(Qt.Vertical)
@@ -133,22 +178,32 @@ class App(QMainWindow):
         elif not self.targetLoaded:
             QMessageBox.question(self, 'ZORT', "Load target image", QMessageBox.Yes | QMessageBox.Yes, QMessageBox.Yes)
         else:
-            print("yey")
+            calcHistogram()
+
 
     def calcHistogram(self, I):
-        # Calculate histogram
-        return NotImplementedError
+        print("not yet")
 
 class PlotCanvas(FigureCanvas):
-    def __init__(self, hist, parent=None, width=5, height=4, dpi=100):
-        return NotImplementedError
-        # Init Canvas
+    def __init__(self, hist, c,parent=None, width=5, height=4, dpi=100):
+        self.c = c
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+ 
+        FigureCanvas.__init__(self, fig)
+        self.setParent(parent)
+ 
+        FigureCanvas.setSizePolicy(self,
+                QSizePolicy.Expanding,
+                QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+
         self.plotHistogram(hist)
 
     def plotHistogram(self, hist):
-        return NotImplementedError
-        # Plot histogram
-
+        ax = self.figure.add_subplot(111)
+        
+        ax.hist(hist,bins=255,color=self.c)
         self.draw()
 
 
