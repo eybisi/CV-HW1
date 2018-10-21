@@ -13,95 +13,42 @@ import numpy as np
 import cv2
 import collections #For counting r g b values
 
-##########################################
-## Do not forget to delete "return NotImplementedError"
-## while implementing a function
-########################################
 
 class App(QMainWindow):
     def __init__(self):
         super(App, self).__init__()
         self.title = 'Histogram Equalization'
-        # You can define other things in here
         self.inputLoaded = False
         self.targetLoaded = False
+
+        self.inputBGR_b = []
+        self.inputBGR_r = []
+        self.inputBGR_g = []
+        self.targetBGR_b = []
+        self.targetBGR_r = []
+        self.targetBGR_g = []
         self.initUI()
         
     def openInputImage(self):
-        print("Open Input")
-        # This function is called when the user clicks File->Input Image.
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","All Files (*);;PNG Files (*.png)", options=options)
-        if fileName:
-            print(fileName)
-            pixmap = QPixmap(fileName)
-            self.inputFile = fileName
-            res = QLabel()
-            res.setPixmap(pixmap)
-            left_layout = QVBoxLayout()
-            left_layout.addWidget(res)
-            left_layout.setAlignment(res,Qt.AlignHCenter)
-            left_layout.addStretch()
-            #left_layout.setAlignment(Qt.)
-            self.inputLoaded = True
-            input_b = []
-            input_img = cv2.imread(self.inputFile)
-            
+        if self.inputLoaded :
+            QMessageBox.question(self, 'Error', "Input image already loaded", QMessageBox.Yes | QMessageBox.Yes, QMessageBox.Yes)
+        else:
+            options = QFileDialog.Options()
+            options |= QFileDialog.DontUseNativeDialog
+            fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","All Files (*);;PNG Files (*.png)", options=options)
+            if fileName:
+                self.setImage(fileName,self.left,"Input")
 
 
-            i_b = [x[0] for y in input_img for x in y]
-            i_g = [x[1] for y in input_img for x in y]
-            i_r = [x[2] for y in input_img for x in y]
-
-            
-            b =PlotCanvas(hist=i_b,c="b")
-            g = PlotCanvas(hist=i_g,c="g")
-            r = PlotCanvas(hist=i_r,c="r")
-            left_layout.addWidget(r)
-            left_layout.addWidget(g)
-            left_layout.addWidget(b)
-
-            self.left.setLayout(left_layout)
-            """
-            #print(i_b)
-            data = np.array(i_b)
-            plt.hist(data,bins=255)
-
-            # And finally plot the cdf
-            #plt.plot(bin_edges[1:], cdf)
-            plt.show()
-            """
     def openTargetImage(self):
-        print("Open Target")
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","All Files (*);;PNG Files (*.png)", options=options)
-        if fileName:
-            print(fileName)
-            pixmap = QPixmap(fileName)
-            self.targetFile = fileName
-            res = QLabel()
-            res.setPixmap(pixmap)
-            mid_layout = QVBoxLayout()
-            mid_layout.addWidget(res)
-            mid_layout.setAlignment(res,Qt.AlignHCenter)
-            self.targetLoaded = True
-            target_img = cv2.imread(self.targetFile)
-
-            t_b = [x[0] for y in target_img for x in y]
-            t_g = [x[1] for y in target_img for x in y]
-            t_r = [x[2] for y in target_img for x in y]
-
-            
-            b =PlotCanvas(hist=t_b,c="b")
-            g = PlotCanvas(hist=t_g,c="g")
-            r = PlotCanvas(hist=t_r,c="r")
-            mid_layout.addWidget(r)
-            mid_layout.addWidget(g)
-            mid_layout.addWidget(b)
-
-            self.mid.setLayout(mid_layout)
+        if self.targetLoaded :
+            QMessageBox.question(self, 'Error', "Target image already loaded", QMessageBox.Yes | QMessageBox.Yes, QMessageBox.Yes)
+        else:
+            options = QFileDialog.Options()
+            options |= QFileDialog.DontUseNativeDialog
+            fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","All Files (*);;PNG Files (*.png)", options=options)
+            if fileName:
+                self.setImage(fileName,self.mid,"Target")
  
     def initUI(self):
         wid = QWidget(self)
@@ -166,23 +113,103 @@ class App(QMainWindow):
         self.setGeometry(1000, 1000, 1000, 1000)
         self.setWindowTitle('CV')
         self.show()
-        # Write GUI initialization code
-  
 
     def histogramButtonClicked(self):
 
         if not self.inputLoaded and not self.targetLoaded:
-            QMessageBox.question(self, 'ZORT', "First load input and target images", QMessageBox.Yes | QMessageBox.Yes, QMessageBox.Yes)
+            QMessageBox.question(self, 'Error', "First load input and target images", QMessageBox.Yes | QMessageBox.Yes, QMessageBox.Yes)
         elif not self.inputLoaded:
-            QMessageBox.question(self, 'ZORT', "Load input image", QMessageBox.Yes | QMessageBox.Yes, QMessageBox.Yes)
+            QMessageBox.question(self, 'Error', "Load input image", QMessageBox.Yes | QMessageBox.Yes, QMessageBox.Yes)
         elif not self.targetLoaded:
-            QMessageBox.question(self, 'ZORT', "Load target image", QMessageBox.Yes | QMessageBox.Yes, QMessageBox.Yes)
+            QMessageBox.question(self, 'Error', "Load target image", QMessageBox.Yes | QMessageBox.Yes, QMessageBox.Yes)
         else:
-            calcHistogram()
+            input_img = cv2.imread(self.inputFile)
+            target_img = cv2.imread(self.targetFile)
+            i_b = self.inputBGR_b
+            i_g = self.inputBGR_g
+            i_r = self.inputBGR_r
 
 
-    def calcHistogram(self, I):
-        print("not yet")
+            #Get BLUE,GREEN,RED pixels of target file
+            t_b = self.targetBGR_b
+            t_g = self.targetBGR_g
+            t_r = self.targetBGR_r
+            
+            #Calculate LUT
+            LUT_b = calcLUT(i_b,t_b)
+            LUT_g = calcLUT(i_g,t_g)
+            LUT_r = calcLUT(i_r,t_r)
+
+            for i in range(len(input_img)):
+                for j in range(len(input_img[i])):
+                    
+                    input_img[i][j][0] = LUT_b[input_img[i][j][0]]
+                    input_img[i][j][1] = LUT_g[input_img[i][j][1]]
+                    input_img[i][j][2] = LUT_r[input_img[i][j][2]]
+
+            r_b = [x[0] for y in input_img for x in y]
+            r_r = [x[2] for y in input_img for x in y]
+            r_g = [x[1] for y in input_img for x in y]
+            
+            b =PlotCanvas(hist=r_b,c="b")
+            g =PlotCanvas(hist=r_g,c="g")
+            r =PlotCanvas(hist=r_r,c="r")
+  
+            cv2.imwrite("result.png",   input_img)
+            pixmap = QPixmap("result.png")
+            res = QLabel()
+            res.setPixmap(pixmap)
+            right_layout = QVBoxLayout()
+            right_layout.addWidget(res)
+
+            #right_layout.addWidget(res)
+            right_layout.addWidget(b)
+            right_layout.addWidget(g)
+            right_layout.addWidget(r)
+
+            #right_layout.addWidget(f_b)
+            self.right.setLayout(right_layout)
+    def setImage(self,fileName,loc,filetype):
+        
+        try:
+            pixmap = QPixmap(fileName)
+        except:
+            raise ValueError("Cant read file")
+
+        if filetype == "Input": 
+            self.inputFile = fileName
+            self.inputLoaded = True
+        elif filetype == "Target":
+            self.targetFile = fileName
+            self.targetLoaded = True
+        res = QLabel()
+        res.setPixmap(pixmap)
+        layout = QVBoxLayout()
+        layout.addWidget(res)
+        layout.setAlignment(res,Qt.AlignHCenter)
+        layout.addStretch()
+        
+        input_img = cv2.imread(fileName)
+        
+        i_b = [x[0] for y in input_img for x in y]
+        i_g = [x[1] for y in input_img for x in y]
+        i_r = [x[2] for y in input_img for x in y]
+        if filetype == "Input": 
+            self.inputBGR_b = i_b
+            self.inputBGR_g = i_g
+            self.inputBGR_r = i_r
+        elif filetype == "Target":
+            self.targetBGR_b = i_b
+            self.targetBGR_g = i_g
+            self.targetBGR_r = i_r
+        
+        b =PlotCanvas(hist=i_b,c="b")
+        g = PlotCanvas(hist=i_g,c="g")
+        r = PlotCanvas(hist=i_r,c="r")
+        layout.addWidget(r)
+        layout.addWidget(g)
+        layout.addWidget(b)
+        loc.setLayout(layout)
 
 class PlotCanvas(FigureCanvas):
     def __init__(self, hist, c,parent=None, width=5, height=4, dpi=100):
@@ -202,9 +229,24 @@ class PlotCanvas(FigureCanvas):
 
     def plotHistogram(self, hist):
         ax = self.figure.add_subplot(111)
-        
         ax.hist(hist,bins=255,color=self.c)
         self.draw()
+
+
+def calcLUT(i,t):
+    num_bins = 256
+    counts1, bin_edges1 = np.histogram(i, bins=num_bins)
+    cdf1 = np.cumsum(counts1)
+    counts2, bin_edges2 = np.histogram(t, bins=num_bins)
+    cdf2 = np.cumsum(counts2)
+    LUT = np.zeros((256,1))
+    j = 0
+    for i in range(256):       
+        for j in range(0,256):
+            if cdf1[i] <= cdf2[j]:
+                break
+        LUT[i] = j
+    return LUT
 
 
 if __name__ == '__main__':
